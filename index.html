@@ -66,8 +66,15 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;display:flex;align-items:ce
 .scroll-btn:active{transform:scale(.92)}
 .scroll-btn.fs{width:auto;height:34px;border-radius:999px;padding:0 16px;font-family:var(--sans);font-size:11px;letter-spacing:.22em;white-space:nowrap}
 @media(max-width:760px){.scroll-btn.fs{height:28px;padding:0 12px;font-size:9px;letter-spacing:.14em}}
-#scroll-band:fullscreen,#scroll-band:-webkit-full-screen{height:100vh;width:100vw}
+#scroll-band:fullscreen,#scroll-band:-webkit-full-screen{height:100vh;height:100dvh;width:100vw}
 #scroll-band:fullscreen::after,#scroll-band:-webkit-full-screen::after{content:'按 ESC 退出全屏';position:absolute;right:18px;bottom:14px;z-index:6;font-size:11px;letter-spacing:.24em;color:rgba(243,237,225,.65);pointer-events:none}
+@media(max-width:760px){#scroll-band:fullscreen::after,#scroll-band:-webkit-full-screen::after{content:none}}
+/* 手机端 CSS 覆盖层全屏（不依赖 Fullscreen API，可完整填满屏幕） */
+.scroll-band.fs-overlay{position:fixed;inset:0;margin-top:0;height:100vh;height:100dvh;width:100vw;z-index:9999}
+.scroll-band.fs-overlay::after{content:none}
+.fs-close{display:none;position:absolute;top:14px;right:14px;z-index:8;width:auto;height:34px;border-radius:999px;padding:0 16px;font-family:var(--sans);font-size:11px;letter-spacing:.22em;white-space:nowrap}
+#scroll-band:fullscreen .fs-close,#scroll-band:-webkit-full-screen .fs-close,.scroll-band.fs-overlay .fs-close{display:flex}
+@media(max-width:760px){.fs-close{height:30px;padding:0 13px;font-size:10px}}
 .scroll-fade{position:absolute;top:0;bottom:0;width:130px;z-index:2;pointer-events:none}
 .scroll-fade.l{left:0;background:linear-gradient(90deg,var(--ink) 4%,transparent)}
 .scroll-fade.r{right:0;background:linear-gradient(270deg,var(--ink) 4%,transparent)}
@@ -344,6 +351,7 @@ footer{padding:90px 5vw 46px;border-top:1px solid rgba(243,237,225,.1);text-alig
   <img class="scroll-img" src="姑苏繁华图.jpg" alt="姑苏繁华图长卷" draggable="false" style="transform: translateX(-521.093px);">
   <div class="scroll-caption"><em>姑苏繁华图</em></div>
   <i class="scroll-fade l" aria-hidden="true"></i><i class="scroll-fade r" aria-hidden="true"></i>
+  <button class="scroll-btn fs-close" id="scroll-fs-close" type="button">退出全屏</button>
 </div>
 <div class="scroll-ui">
   <button class="scroll-btn prev" type="button" aria-label="向左浏览"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
@@ -956,14 +964,25 @@ console.log('%c姑苏·原点 · 以华贸为圆心丈量两千五百年','color
   if(next)next.addEventListener('click',function(e){e.preventDefault();nudge(-1);});
   window.addEventListener('resize',layout);
   var fsBtn=document.getElementById('scroll-fs');
+  var fsClose=document.getElementById('scroll-fs-close');
   if(fsBtn){
     var reqFs=band.requestFullscreen||band.webkitRequestFullscreen;
     var exitFs=document.exitFullscreen||document.webkitExitFullscreen;
     var fsEl=function(){return document.fullscreenElement||document.webkitFullscreenElement};
-    if(reqFs)fsBtn.addEventListener('click',function(){
-      if(fsEl()){exitFs.call(document);}
-      else{var p=reqFs.call(band);if(p&&p.catch)p.catch(function(){});}
+    // 触屏设备（手机/平板）用 CSS 覆盖层全屏：不受浏览器地址栏影响，可完整填满屏幕
+    var isTouch=window.matchMedia&&window.matchMedia('(pointer:coarse)').matches;
+    var closeFs=function(){
+      if(fsEl()&&exitFs)exitFs.call(document);
+      band.classList.remove('fs-overlay');
+      layout();
+    };
+    fsBtn.addEventListener('click',function(){
+      if(fsEl()||band.classList.contains('fs-overlay')){closeFs();return;}
+      if(reqFs&&!isTouch){var p=reqFs.call(band);if(p&&p.catch)p.catch(function(){band.classList.add('fs-overlay');layout();});}
+      else{band.classList.add('fs-overlay');layout();}
     });
+    if(fsClose)fsClose.addEventListener('click',function(e){e.stopPropagation();closeFs();});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')closeFs();});
   }
   document.addEventListener('fullscreenchange',layout);
   document.addEventListener('webkitfullscreenchange',layout);
