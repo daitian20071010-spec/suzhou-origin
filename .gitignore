@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+
+# 编辑器/工具目录
+.qoder/
+.trae-html-share-packages/
+
+# 原始大图（已压缩为同名 .jpg 部署）
+姑苏繁华图.png
+紫芝园：明代名园重现.png
+古城旁的当代新生.png
+苏州华贸中心 实景.png
+苏州华贸中心 抽象.png
+姑苏 logo.svg
+
+# 旧版页面（不在本次部署范围）
+GLM02.html
+origin-suzhou FS.html
+origin-suzhou.html
+suzhou-light.html
+suzhou-light.css
+suzhou-light.js
+suzhou-pop.html
+suzhou-pop.css
+suzhou-pop.js
+suzhou-swiss.html
+suzhou-swiss.css
+suzhou-swiss.js
