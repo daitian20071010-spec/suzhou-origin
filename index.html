@@ -474,7 +474,7 @@ footer{padding:90px 5vw 46px;border-top:1px solid rgba(243,237,225,.1);text-alig
   <stop offset="0.5" stop-color="#A8E8DC"></stop>
   <stop offset="0.65" stop-color="#5CA39A"></stop>
   <stop offset="1" stop-color="#2A5A52"></stop>
-  <animateTransform attributeName="gradientTransform" type="translate" from="0 0" to="250 0" dur="1.5s" repeatCount="indefinite"></animateTransform>
+  <!-- 水流动画由 JS 驱动（iOS Safari 不支持 SMIL gradientTransform 动画），见下方 waterFlow 动画脚本 -->
 </linearGradient>
 </defs>
 <g clip-path="url(#clip0_9590_4086)">
@@ -859,6 +859,21 @@ const io=new IntersectionObserver(es=>es.forEach(en=>{
   io.unobserve(en.target);
 },{threshold:.12}));
 document.querySelectorAll('.rv,.stats').forEach(x=>io.observe(x));
+// 水棋盘流动动画：JS 驱动渐变坐标（iOS Safari 不支持 SMIL gradientTransform 动画，此法全平台兼容）
+(function(){
+  const g=document.getElementById('waterFlow');
+  if(!g)return;
+  const PERIOD=250,DUR=1500;
+  let t0=null;
+  function tick(now){
+    if(t0===null)t0=now;
+    const off=((now-t0)%DUR)/DUR*PERIOD;
+    g.setAttribute('x1',off);
+    g.setAttribute('x2',off+PERIOD);
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+})();
 // 双棋盘图层依次出现（循环：一轮播完停留 3 秒后重新开始）
 (function(){
   const bs=document.querySelector('.board-stack');
