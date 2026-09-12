@@ -314,6 +314,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;display:flex;align-items:ce
   .card{display:none}
   .card.pin:not(.hide){display:block}
   .rgroup:not(.live){display:none}
+  /* 半径筛选模式：展示该范围内全部卡片 */
+  #ringsArea.show-ring .card:not(.hide){display:block}
+  #ringsArea.show-ring .rgroup:not(.hide){display:block}
 }
 .card-meta{display:flex;justify-content:space-between;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:rgba(20,18,16,.5)}
 .spot-dist{font-family:var(--serif);font-weight:900;font-size:26px;color:var(--sc,var(--red));line-height:1;display:block;margin-top:12px}
@@ -806,9 +809,18 @@ const snameToId={},snameToRing={};
 document.querySelector('.card')?.classList.add('pin');
 document.querySelector('.rgroup')?.classList.add('live');
 spots.forEach(s=>{snameToId[s.sname]=s.id;snameToRing[s.sname]=s.r});
+const resetFilter=function(){
+  document.querySelectorAll('.fc').forEach(x=>x.classList.remove('on'));
+  document.querySelector('.fc[data-ring="all"]')?.classList.add('on');
+  document.getElementById('ringsArea')?.classList.remove('show-ring');
+  document.querySelectorAll('.card').forEach(c=>c.classList.remove('hide'));
+  document.querySelectorAll('.rgroup').forEach(g=>g.classList.remove('hide'));
+  document.querySelectorAll('.radar .poi').forEach(p=>{p.style.opacity='';p.classList.remove('active')});
+};
 document.querySelectorAll('.radar .poi').forEach(p=>{
   p.addEventListener('click',()=>{
-    document.querySelectorAll('.radar .poi').forEach(x=>x.classList.remove('active'));
+    // 点击单个景点：彻底退出筛选模式（等价于点"全部"），恢复单卡片展示
+    resetFilter();
     p.classList.add('active');
     const c=document.getElementById(snameToId[p.dataset.sname]);
     if(c){
@@ -825,8 +837,11 @@ document.getElementById('filters').addEventListener('click',e=>{
   const b=e.target.closest('.fc');if(!b)return;
   document.querySelectorAll('.fc').forEach(x=>x.classList.remove('on'));b.classList.add('on');
   const v=b.dataset.ring;
-  document.querySelectorAll('.card').forEach(c=>c.classList.toggle('hide',!(v==='all'||c.dataset.ring===v)));
-  document.querySelectorAll('.rgroup').forEach(g=>g.classList.toggle('hide',!(v==='all'||g.dataset.ring===v)));
+  if(v==='all'){resetFilter();return;}
+  // 筛选模式开关：移动端展示该范围全部卡片
+  document.getElementById('ringsArea')?.classList.add('show-ring');
+  document.querySelectorAll('.card').forEach(c=>c.classList.toggle('hide',c.dataset.ring!==v));
+  document.querySelectorAll('.rgroup').forEach(g=>g.classList.toggle('hide',g.dataset.ring!==v));
   // 雷达图：范围内景点全亮并选中，范围外淡化
   document.querySelectorAll('.radar .poi').forEach(p=>{
     const inRing=v==='all'||snameToRing[p.dataset.sname]===+v;
