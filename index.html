@@ -1010,17 +1010,14 @@ console.log('%c姑苏·原点 · 以华贸为圆心丈量两千五百年','color
     var fsEl=function(){return document.fullscreenElement||document.webkitFullscreenElement};
     // 触屏设备（手机/平板）用 CSS 覆盖层全屏：不受浏览器地址栏影响，可完整填满屏幕
     var isTouch=window.matchMedia&&window.matchMedia('(pointer:coarse)').matches;
-    // 全屏时切换高清图，退出时换回小图（高清 24M，仅按需加载）
-    var hiresLoaded=false;
+    // 全屏时切换高清图，退出时换回小图（高清 24M，仅按需加载；浏览器缓存后二次切换即时完成）
+    var hiresOn=false;
     var useHires=function(on){
-      if(on&&!hiresLoaded){
-        hiresLoaded=true; // 防止重复加载
-        img.src=img.dataset.hires;
-        img.addEventListener('load',layout,{once:true});
-      }else if(!on){
-        img.src='姑苏繁华图.jpg';
-        img.addEventListener('load',layout,{once:true});
-      }
+      if(on===hiresOn)return;
+      hiresOn=on;
+      img.src=on?img.dataset.hires:'姑苏繁华图.jpg';
+      if(img.complete&&img.naturalWidth)layout();
+      else img.addEventListener('load',layout,{once:true});
     };
     var closeFs=function(){
       if(fsEl()&&exitFs)exitFs.call(document);
