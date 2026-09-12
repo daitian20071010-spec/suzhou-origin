@@ -827,7 +827,16 @@ document.getElementById('filters').addEventListener('click',e=>{
   const v=b.dataset.ring;
   document.querySelectorAll('.card').forEach(c=>c.classList.toggle('hide',!(v==='all'||c.dataset.ring===v)));
   document.querySelectorAll('.rgroup').forEach(g=>g.classList.toggle('hide',!(v==='all'||g.dataset.ring===v)));
-  document.querySelectorAll('.radar .poi').forEach(p=>{p.style.opacity=(v==='all'||snameToRing[p.dataset.sname]===+v)?'1':'.25'});
+  // 雷达图：范围内景点全亮并选中，范围外淡化
+  document.querySelectorAll('.radar .poi').forEach(p=>{
+    const inRing=v==='all'||snameToRing[p.dataset.sname]===+v;
+    p.style.opacity=inRing?'1':'.25';
+    p.classList.toggle('active',inRing&&v!=='all');
+  });
+  // 移动端：滚动到卡片区查看该范围景点
+  if(v!=='all'&&window.matchMedia('(max-width:760px)').matches){
+    document.getElementById('ringsArea')?.scrollIntoView({behavior:'smooth',block:'start'});
+  }
 });
 // 进度条
 addEventListener('scroll',()=>{
