@@ -351,7 +351,7 @@ footer{padding:90px 5vw 46px;border-top:1px solid rgba(243,237,225,.1);text-alig
 <body>
 <!-- ═══ 姑苏繁华图 · 长卷 ═══ -->
 <div class="scroll-band" id="scroll-band">
-  <img class="scroll-img" src="姑苏繁华图.jpg" alt="姑苏繁华图长卷" draggable="false" style="transform: translateX(-521.093px);">
+  <img class="scroll-img" src="姑苏繁华图.jpg" data-hires="姑苏繁华图 高清.png" alt="姑苏繁华图长卷" draggable="false">
   <div class="scroll-caption"><em>姑苏繁华图</em></div>
   <i class="scroll-fade l" aria-hidden="true"></i><i class="scroll-fade r" aria-hidden="true"></i>
   <button class="scroll-btn fs-close" id="scroll-fs-close" type="button">退出全屏</button>
@@ -1010,15 +1010,32 @@ console.log('%c姑苏·原点 · 以华贸为圆心丈量两千五百年','color
     var fsEl=function(){return document.fullscreenElement||document.webkitFullscreenElement};
     // 触屏设备（手机/平板）用 CSS 覆盖层全屏：不受浏览器地址栏影响，可完整填满屏幕
     var isTouch=window.matchMedia&&window.matchMedia('(pointer:coarse)').matches;
+    // 全屏时切换高清图，退出时换回小图（高清 24M，仅按需加载）
+    var hiresLoaded=false;
+    var useHires=function(on){
+      if(on&&!hiresLoaded){
+        hiresLoaded=true; // 防止重复加载
+        img.src=img.dataset.hires;
+        img.addEventListener('load',layout,{once:true});
+      }else if(!on){
+        img.src='姑苏繁华图.jpg';
+        img.addEventListener('load',layout,{once:true});
+      }
+    };
     var closeFs=function(){
       if(fsEl()&&exitFs)exitFs.call(document);
       band.classList.remove('fs-overlay');
+      useHires(false);
       layout();
+    };
+    var openFs=function(){
+      useHires(true);
+      if(reqFs&&!isTouch){var p=reqFs.call(band);if(p&&p.catch)p.catch(function(){band.classList.add('fs-overlay');layout();});}
+      else{band.classList.add('fs-overlay');layout();}
     };
     fsBtn.addEventListener('click',function(){
       if(fsEl()||band.classList.contains('fs-overlay')){closeFs();return;}
-      if(reqFs&&!isTouch){var p=reqFs.call(band);if(p&&p.catch)p.catch(function(){band.classList.add('fs-overlay');layout();});}
-      else{band.classList.add('fs-overlay');layout();}
+      openFs();
     });
     if(fsClose)fsClose.addEventListener('click',function(e){e.stopPropagation();closeFs();});
     document.addEventListener('keydown',function(e){if(e.key==='Escape')closeFs();});
