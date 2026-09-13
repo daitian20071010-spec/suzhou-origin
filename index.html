@@ -69,12 +69,23 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;display:flex;align-items:ce
 #scroll-band:fullscreen,#scroll-band:-webkit-full-screen{height:100vh;height:100dvh;width:100vw}
 #scroll-band:fullscreen::after,#scroll-band:-webkit-full-screen::after{content:'按 ESC 退出全屏';position:absolute;right:18px;bottom:14px;z-index:6;font-size:11px;letter-spacing:.24em;color:rgba(243,237,225,.65);pointer-events:none}
 @media(max-width:760px){#scroll-band:fullscreen::after,#scroll-band:-webkit-full-screen::after{content:none}}
-/* 手机端 CSS 覆盖层全屏（不依赖 Fullscreen API，可完整填满屏幕） */
+/* 手机端 CSS 覆盖层全屏（不依赖 Fullscreen API；占屏幕 2/3 高度，居中） */
 .scroll-band.fs-overlay{position:fixed;inset:0;margin-top:0;height:100vh;height:100dvh;width:100vw;z-index:9999}
 .scroll-band.fs-overlay::after{content:none}
+@media(max-width:760px){
+  .scroll-band.fs-overlay{height:66.7dvh;top:16.65dvh;bottom:16.65dvh;left:0;right:0;inset:auto}
+}
 .fs-close{display:none;position:absolute;top:14px;right:14px;z-index:8;width:auto;height:34px;border-radius:999px;padding:0 16px;font-family:var(--sans);font-size:11px;letter-spacing:.22em;white-space:nowrap}
 #scroll-band:fullscreen .fs-close,#scroll-band:-webkit-full-screen .fs-close,.scroll-band.fs-overlay .fs-close{display:flex}
 @media(max-width:760px){.fs-close{height:30px;padding:0 13px;font-size:10px}}
+/* 高清图加载提示 */
+.fs-loading{display:none;position:absolute;z-index:9;left:50%;bottom:22px;transform:translateX(-50%);pointer-events:none;
+  background:rgba(20,18,16,.78);backdrop-filter:blur(6px);border:1px solid rgba(243,237,225,.28);border-radius:999px;
+  padding:9px 20px;font-family:var(--sans);font-size:11.5px;letter-spacing:.18em;color:var(--paper);white-space:nowrap}
+.fs-loading.show{display:flex;align-items:center;gap:10px}
+.fs-loading .spin{width:13px;height:13px;border-radius:50%;border:2px solid rgba(243,237,225,.25);border-top-color:var(--paper);animation:fsSpin .8s linear infinite;flex:none}
+@keyframes fsSpin{to{transform:rotate(360deg)}}
+@media(max-width:760px){.fs-loading{bottom:16px;padding:8px 16px;font-size:10px;letter-spacing:.12em}}
 .scroll-fade{position:absolute;top:0;bottom:0;width:130px;z-index:2;pointer-events:none}
 .scroll-fade.l{left:0;background:linear-gradient(90deg,var(--ink) 4%,transparent)}
 .scroll-fade.r{right:0;background:linear-gradient(270deg,var(--ink) 4%,transparent)}
@@ -355,6 +366,7 @@ footer{padding:90px 5vw 46px;border-top:1px solid rgba(243,237,225,.1);text-alig
   <div class="scroll-caption"><em>姑苏繁华图</em></div>
   <i class="scroll-fade l" aria-hidden="true"></i><i class="scroll-fade r" aria-hidden="true"></i>
   <button class="scroll-btn fs-close" id="scroll-fs-close" type="button">退出全屏</button>
+  <div class="fs-loading" id="scroll-fs-loading"><i class="spin"></i><span id="fs-loading-text">高清长卷加载中</span></div>
 </div>
 <div class="scroll-ui">
   <button class="scroll-btn prev" type="button" aria-label="向左浏览"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
@@ -1008,16 +1020,50 @@ console.log('%c姑苏·原点 · 以华贸为圆心丈量两千五百年','color
     var reqFs=band.requestFullscreen||band.webkitRequestFullscreen;
     var exitFs=document.exitFullscreen||document.webkitExitFullscreen;
     var fsEl=function(){return document.fullscreenElement||document.webkitFullscreenElement};
-    // 触屏设备（手机/平板）用 CSS 覆盖层全屏：不受浏览器地址栏影响，可完整填满屏幕
-    var isTouch=window.matchMedia&&window.matchMedia('(pointer:coarse)').matches;
+    // 手机端（≤760px，与 CSS 媒体查询一致）用 CSS 覆盖层全屏：占屏幕 2/3 高度
+    var isMobile=window.matchMedia&&window.matchMedia('(max-width:760px)').matches;
     // 全屏时切换高清图，退出时换回小图（高清 24M，仅按需加载；浏览器缓存后二次切换即时完成）
-    var hiresOn=false;
+    var hiresOn=false,fsLoading=document.getElementById('scroll-fs-loading'),fsLoadingText=document.getElementById('fs-loading-text');
+    var showLoading=function(on){if(fsLoading)fsLoading.classList.toggle('show',on);};
+    var loadHires=function(done){
+      // fetch 流式读取，可显示下载百分比；缓存命中时立即完成
+      fetch(img.dataset.hires).then(function(r){
+        var total=+(r.headers.get('Content-Length')||0);
+        if(!r.ok)throw new Error(r.status);
+        if(!total||!r.body){return r.blob().then(function(b){done(b,-1);});}
+        var reader=r.body.getReader(),loaded=0;
+        var chunks=[];
+        var tick=function(){
+          fsLoadingText&&(fsLoadingText.textContent='高清长卷加载中 '+Math.min(99,Math.round(loaded/total*100))+'%');
+        };
+        reader.read().then(function pump(res){
+          if(res.done){done(new Blob(chunks,{type:'image/png'}),100);return;}
+          chunks.push(res.value);loaded+=res.value.length;tick();
+          reader.read().then(pump);
+        });
+      }).catch(function(){
+        done(null,-1); // 网络失败：回退直接赋值 src，交给浏览器加载
+        img.src=img.dataset.hires;
+      });
+    };
     var useHires=function(on){
       if(on===hiresOn)return;
       hiresOn=on;
-      img.src=on?img.dataset.hires:'姑苏繁华图.jpg';
-      if(img.complete&&img.naturalWidth)layout();
-      else img.addEventListener('load',layout,{once:true});
+      if(on){
+        showLoading(true);
+        fsLoadingText&&(fsLoadingText.textContent='高清长卷加载中');
+        loadHires(function(blob){
+          showLoading(false);
+          if(blob)img.src=URL.createObjectURL(blob);
+          if(img.complete&&img.naturalWidth)layout();
+          else img.addEventListener('load',layout,{once:true});
+        });
+      }else{
+        showLoading(false);
+        img.src='姑苏繁华图.jpg';
+        if(img.complete&&img.naturalWidth)layout();
+        else img.addEventListener('load',layout,{once:true});
+      }
     };
     var closeFs=function(){
       if(fsEl()&&exitFs)exitFs.call(document);
@@ -1027,7 +1073,7 @@ console.log('%c姑苏·原点 · 以华贸为圆心丈量两千五百年','color
     };
     var openFs=function(){
       useHires(true);
-      if(reqFs&&!isTouch){var p=reqFs.call(band);if(p&&p.catch)p.catch(function(){band.classList.add('fs-overlay');layout();});}
+      if(reqFs&&!isMobile){var p=reqFs.call(band);if(p&&p.catch)p.catch(function(){band.classList.add('fs-overlay');layout();});}
       else{band.classList.add('fs-overlay');layout();}
     };
     fsBtn.addEventListener('click',function(){
