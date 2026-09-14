@@ -69,11 +69,17 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;display:flex;align-items:ce
 #scroll-band:fullscreen,#scroll-band:-webkit-full-screen{height:100vh;height:100dvh;width:100vw}
 #scroll-band:fullscreen::after,#scroll-band:-webkit-full-screen::after{content:'按 ESC 退出全屏';position:absolute;right:18px;bottom:14px;z-index:6;font-size:11px;letter-spacing:.24em;color:rgba(243,237,225,.65);pointer-events:none}
 @media(max-width:760px){#scroll-band:fullscreen::after,#scroll-band:-webkit-full-screen::after{content:none}}
-/* 手机端 CSS 覆盖层全屏（不依赖 Fullscreen API；占屏幕 2/3 高度，居中） */
+/* 手机端 CSS 覆盖层全屏（不依赖 Fullscreen API，可完整填满屏幕） */
 .scroll-band.fs-overlay{position:fixed;inset:0;margin-top:0;height:100vh;height:100dvh;width:100vw;z-index:9999}
 .scroll-band.fs-overlay::after{content:none}
+/* 竖屏提示：横屏观看效果更佳（仅移动端全屏 + 竖屏时显示） */
+.fs-rotate{display:none;position:absolute;z-index:10;top:calc(10px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);pointer-events:none;
+  background:rgba(20,20,20,.72);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(243,237,225,.18);border-radius:999px;
+  padding:7px 16px;color:var(--paper);font-size:11px;letter-spacing:.15em;white-space:nowrap;align-items:center;gap:7px}
+.fs-rotate svg{width:14px;height:14px;flex:none;filter:brightness(0) invert(1);opacity:.9;animation:fsRot 2.4s ease-in-out infinite}
+@keyframes fsRot{0%,20%{transform:rotate(0)}55%,100%{transform:rotate(-90deg)}}
 @media(max-width:760px){
-  .scroll-band.fs-overlay{height:66.7dvh;top:16.65dvh;bottom:16.65dvh;left:0;right:0;inset:auto}
+  .scroll-band.fs-overlay.fs-portrait .fs-rotate{display:flex}
 }
 .fs-close{display:none;position:absolute;top:14px;right:14px;z-index:8;width:auto;height:34px;border-radius:999px;padding:0 16px;font-family:var(--sans);font-size:11px;letter-spacing:.22em;white-space:nowrap}
 #scroll-band:fullscreen .fs-close,#scroll-band:-webkit-full-screen .fs-close,.scroll-band.fs-overlay .fs-close{display:flex}
@@ -367,6 +373,7 @@ footer{padding:90px 5vw 46px;border-top:1px solid rgba(243,237,225,.1);text-alig
   <i class="scroll-fade l" aria-hidden="true"></i><i class="scroll-fade r" aria-hidden="true"></i>
   <button class="scroll-btn fs-close" id="scroll-fs-close" type="button">退出全屏</button>
   <div class="fs-loading" id="scroll-fs-loading"><i class="spin"></i><span id="fs-loading-text">高清长卷加载中</span></div>
+  <div class="fs-rotate" id="scroll-fs-rotate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M3 12h-1M22 12h-1"/></svg><span>横屏观看效果更佳</span></div>
 </div>
 <div class="scroll-ui">
   <button class="scroll-btn prev" type="button" aria-label="向左浏览"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
@@ -985,6 +992,7 @@ console.log('%c姑苏·原点 · 以华贸为圆心丈量两千五百年','color
     apply();
   }
   band.addEventListener('pointerdown',function(e){
+    if(e.target.closest&&e.target.closest('button'))return; // 按钮（退出全屏等）不进入拖拽，保证 click 正常触发
     drag=true;resumeAt=0;sx=e.clientX;so=off;band.classList.add('dragging');
     if(band.setPointerCapture)band.setPointerCapture(e.pointerId);
     e.preventDefault();
@@ -1067,14 +1075,21 @@ console.log('%c姑苏·原点 · 以华贸为圆心丈量两千五百年','color
     };
     var closeFs=function(){
       if(fsEl()&&exitFs)exitFs.call(document);
-      band.classList.remove('fs-overlay');
+      band.classList.remove('fs-overlay','fs-portrait');
       useHires(false);
       layout();
+    };
+    // 竖屏检测：全屏覆盖层下且竖屏时显示"横屏观看效果更佳"提示
+    var portraitMq=window.matchMedia('(orientation:portrait)');
+    var syncPortrait=function(){
+      if(band.classList.contains('fs-overlay')&&portraitMq.matches)band.classList.add('fs-portrait');
+      else band.classList.remove('fs-portrait');
     };
     var openFs=function(){
       useHires(true);
       if(reqFs&&!isMobile){var p=reqFs.call(band);if(p&&p.catch)p.catch(function(){band.classList.add('fs-overlay');layout();});}
       else{band.classList.add('fs-overlay');layout();}
+      syncPortrait();
     };
     fsBtn.addEventListener('click',function(){
       if(fsEl()||band.classList.contains('fs-overlay')){closeFs();return;}
@@ -1082,6 +1097,8 @@ console.log('%c姑苏·原点 · 以华贸为圆心丈量两千五百年','color
     });
     if(fsClose)fsClose.addEventListener('click',function(e){e.stopPropagation();closeFs();});
     document.addEventListener('keydown',function(e){if(e.key==='Escape')closeFs();});
+    // 旋转手机时实时更新提示（横屏自动隐藏）
+    if(portraitMq.addEventListener)portraitMq.addEventListener('change',syncPortrait);
   }
   document.addEventListener('fullscreenchange',layout);
   document.addEventListener('webkitfullscreenchange',layout);
