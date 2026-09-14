@@ -78,8 +78,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;display:flex;align-items:ce
   padding:7px 16px;color:var(--paper);font-size:11px;letter-spacing:.15em;white-space:nowrap;align-items:center;gap:7px}
 .fs-rotate svg{width:14px;height:14px;flex:none;filter:brightness(0) invert(1);opacity:.9;animation:fsRot 2.4s ease-in-out infinite}
 @keyframes fsRot{0%,20%{transform:rotate(0)}55%,100%{transform:rotate(-90deg)}}
-@media(max-width:760px){
-  .scroll-band.fs-overlay.fs-portrait .fs-rotate{display:flex}
+/* 竖屏提示：移动端(≤760px) + 竖屏 + 全屏（覆盖层或原生全屏任一路径）时显示 */
+@media(max-width:760px) and (orientation:portrait){
+  .scroll-band.fs-overlay .fs-rotate,
+  #scroll-band:fullscreen .fs-rotate,
+  #scroll-band:-webkit-full-screen .fs-rotate{display:flex}
 }
 .fs-close{display:none;position:absolute;top:14px;right:14px;z-index:8;width:auto;height:34px;border-radius:999px;padding:0 16px;font-family:var(--sans);font-size:11px;letter-spacing:.22em;white-space:nowrap}
 #scroll-band:fullscreen .fs-close,#scroll-band:-webkit-full-screen .fs-close,.scroll-band.fs-overlay .fs-close{display:flex}
@@ -1075,21 +1078,14 @@ console.log('%c姑苏·原点 · 以华贸为圆心丈量两千五百年','color
     };
     var closeFs=function(){
       if(fsEl()&&exitFs)exitFs.call(document);
-      band.classList.remove('fs-overlay','fs-portrait');
+      band.classList.remove('fs-overlay');
       useHires(false);
       layout();
-    };
-    // 竖屏检测：全屏覆盖层下且竖屏时显示"横屏观看效果更佳"提示
-    var portraitMq=window.matchMedia('(orientation:portrait)');
-    var syncPortrait=function(){
-      if(band.classList.contains('fs-overlay')&&portraitMq.matches)band.classList.add('fs-portrait');
-      else band.classList.remove('fs-portrait');
     };
     var openFs=function(){
       useHires(true);
       if(reqFs&&!isMobile){var p=reqFs.call(band);if(p&&p.catch)p.catch(function(){band.classList.add('fs-overlay');layout();});}
       else{band.classList.add('fs-overlay');layout();}
-      syncPortrait();
     };
     fsBtn.addEventListener('click',function(){
       if(fsEl()||band.classList.contains('fs-overlay')){closeFs();return;}
@@ -1097,8 +1093,6 @@ console.log('%c姑苏·原点 · 以华贸为圆心丈量两千五百年','color
     });
     if(fsClose)fsClose.addEventListener('click',function(e){e.stopPropagation();closeFs();});
     document.addEventListener('keydown',function(e){if(e.key==='Escape')closeFs();});
-    // 旋转手机时实时更新提示（横屏自动隐藏）
-    if(portraitMq.addEventListener)portraitMq.addEventListener('change',syncPortrait);
   }
   document.addEventListener('fullscreenchange',layout);
   document.addEventListener('webkitfullscreenchange',layout);
